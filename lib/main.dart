@@ -25,10 +25,11 @@ class ValentineHome extends StatefulWidget {
 }
 
 class _ValentineHomeState extends State<ValentineHome>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final List<String> emojiOptions = ['Sweet Heart', 'Party Heart'];
   String selectedEmoji = 'Sweet Heart';
   late final AnimationController _sparkleController;
+  final List<_FallingCow> _fallingCows = [];
 
   @override
   void initState() {
@@ -42,7 +43,35 @@ class _ValentineHomeState extends State<ValentineHome>
   @override
   void dispose() {
     _sparkleController.dispose();
+    for (final cow in _fallingCows) {
+      cow.controller.dispose();
+    }
     super.dispose();
+  }
+
+  void _triggerLoveTime() {
+    final rng = Random();
+    for (int i = 0; i < 10; i++) {
+      Future.delayed(Duration(milliseconds: i * 150), () {
+        if (!mounted) return;
+        final controller = AnimationController(
+          vsync: this,
+          duration: Duration(milliseconds: 2000 + rng.nextInt(1000)),
+        );
+        final cow = _FallingCow(
+          controller: controller,
+          x: rng.nextDouble(),
+          rotation: (rng.nextDouble() - 0.5) * 0.8,
+          size: 50.0 + rng.nextDouble() * 40,
+        );
+        setState(() => _fallingCows.add(cow));
+        controller.forward().then((_) {
+          if (!mounted) return;
+          setState(() => _fallingCows.remove(cow));
+          controller.dispose();
+        });
+      });
+    }
   }
 
   @override
@@ -166,6 +195,33 @@ class _ValentineHomeState extends State<ValentineHome>
             Positioned.fill(
               child: CustomPaint(painter: ConfettiPainter(seed: 42)),
             ),
+          // Falling cows from Love Time button
+          ..._fallingCows.map((cow) {
+            return AnimatedBuilder(
+              animation: cow.controller,
+              builder: (context, child) {
+                final screenHeight = MediaQuery.of(context).size.height;
+                final screenWidth = MediaQuery.of(context).size.width;
+                final top =
+                    -cow.size +
+                    cow.controller.value * (screenHeight + cow.size * 2);
+                final left = cow.x * (screenWidth - cow.size);
+                return Positioned(
+                  top: top,
+                  left: left,
+                  child: Transform.rotate(
+                    angle: cow.rotation,
+                    child: Image.asset(
+                      'assets/images/cows_kissing.jpg',
+                      width: cow.size,
+                      height: cow.size * 0.7,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
           Column(
             children: [
               const SizedBox(height: 16),
@@ -193,6 +249,19 @@ class _ValentineHomeState extends State<ValentineHome>
                     'assets/images/smiling_heart.webp',
                     width: 36,
                     height: 36,
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _triggerLoveTime,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE91E63),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: const Text('Love Time'),
                   ),
                 ],
               ),
@@ -546,4 +615,18 @@ class ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ConfettiPainter oldDelegate) =>
       oldDelegate.seed != seed;
+}
+
+class _FallingCow {
+  _FallingCow({
+    required this.controller,
+    required this.x,
+    required this.rotation,
+    required this.size,
+  });
+
+  final AnimationController controller;
+  final double x;
+  final double rotation;
+  final double size;
 }
