@@ -34,6 +34,25 @@ class _ValentineHomeState extends State<ValentineHome> {
       appBar: AppBar(title: const Text('Cupid\'s Canvas')),
       body: Stack(
         children: [
+          // Gradient background
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFF8BBD0), // soft pink
+                    Color(0xFFE91E63), // passionate red
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Layered heart shapes for depth
+          Positioned.fill(
+            child: CustomPaint(painter: BackgroundHeartsPainter()),
+          ),
           if (selectedEmoji == 'Party Heart')
             Positioned.fill(
               child: CustomPaint(painter: ConfettiPainter(seed: 42)),
@@ -73,9 +92,6 @@ class HeartEmojiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    // Heart base
     final heartPath = Path()
       ..moveTo(center.dx, center.dy + 60)
       ..cubicTo(
@@ -96,10 +112,36 @@ class HeartEmojiPainter extends CustomPainter {
       )
       ..close();
 
-    paint.color = type == 'Party Heart'
-        ? const Color(0xFFF48FB1)
-        : const Color(0xFFE91E63);
-    canvas.drawPath(heartPath, paint);
+    // Add shadow for depth
+    canvas.drawShadow(
+      heartPath,
+      Colors.red.shade900.withOpacity(0.4),
+      12,
+      true,
+    );
+
+    // Gradient fill for heart
+    final Rect heartBounds = Rect.fromCenter(
+      center: center,
+      width: 220,
+      height: 200,
+    );
+    final Gradient heartGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        type == 'Party Heart'
+            ? const Color(0xFFF8BBD0)
+            : const Color(0xFFF06292),
+        type == 'Party Heart'
+            ? const Color(0xFFF06292)
+            : const Color(0xFFD50000),
+      ],
+    );
+    final Paint gradientPaint = Paint()
+      ..shader = heartGradient.createShader(heartBounds)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(heartPath, gradientPaint);
 
     // Face features (starter)
     final eyePaint = Paint()..color = Colors.white;
@@ -133,6 +175,67 @@ class HeartEmojiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant HeartEmojiPainter oldDelegate) =>
       oldDelegate.type != type;
+}
+
+// Painter for background hearts (depth & passion)
+class BackgroundHeartsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final hearts = [
+      // (x, y, scale, opacity)
+      [0.2, 0.3, 0.7, 0.18],
+      [0.7, 0.2, 0.5, 0.13],
+      [0.5, 0.7, 1.1, 0.10],
+      [0.8, 0.8, 0.4, 0.15],
+      [0.3, 0.8, 0.6, 0.12],
+    ];
+    for (final h in hearts) {
+      final dx = size.width * h[0];
+      final dy = size.height * h[1];
+      final scale = h[2];
+      final opacity = h[3];
+      final path = Path()
+        ..moveTo(dx, dy + 60 * scale)
+        ..cubicTo(
+          dx + 110 * scale,
+          dy - 10 * scale,
+          dx + 60 * scale,
+          dy - 120 * scale,
+          dx,
+          dy - 40 * scale,
+        )
+        ..cubicTo(
+          dx - 60 * scale,
+          dy - 120 * scale,
+          dx - 110 * scale,
+          dy - 10 * scale,
+          dx,
+          dy + 60 * scale,
+        )
+        ..close();
+      final paint = Paint()
+        ..shader =
+            LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFF8BBD0).withOpacity(opacity + 0.1),
+                const Color(0xFFE91E63).withOpacity(opacity),
+              ],
+            ).createShader(
+              Rect.fromCenter(
+                center: Offset(dx, dy),
+                width: 220 * scale,
+                height: 200 * scale,
+              ),
+            )
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class ConfettiPainter extends CustomPainter {
