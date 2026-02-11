@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 void main() => runApp(const ValentineApp());
@@ -30,24 +32,33 @@ class _ValentineHomeState extends State<ValentineHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Cupid\'s Canvas')),
-      body: Column(
+      body: Stack(
         children: [
-          const SizedBox(height: 16),
-          DropdownButton<String>(
-            value: selectedEmoji,
-            items: emojiOptions
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (value) => setState(() => selectedEmoji = value ?? selectedEmoji),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Center(
-              child: CustomPaint(
-                size: const Size(300, 300),
-                painter: HeartEmojiPainter(type: selectedEmoji),
-              ),
+          if (selectedEmoji == 'Party Heart')
+            Positioned.fill(
+              child: CustomPaint(painter: ConfettiPainter(seed: 42)),
             ),
+          Column(
+            children: [
+              const SizedBox(height: 16),
+              DropdownButton<String>(
+                value: selectedEmoji,
+                items: emojiOptions
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => selectedEmoji = value ?? selectedEmoji),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Center(
+                  child: CustomPaint(
+                    size: const Size(300, 300),
+                    painter: HeartEmojiPainter(type: selectedEmoji),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -67,11 +78,27 @@ class HeartEmojiPainter extends CustomPainter {
     // Heart base
     final heartPath = Path()
       ..moveTo(center.dx, center.dy + 60)
-      ..cubicTo(center.dx + 110, center.dy - 10, center.dx + 60, center.dy - 120, center.dx, center.dy - 40)
-      ..cubicTo(center.dx - 60, center.dy - 120, center.dx - 110, center.dy - 10, center.dx, center.dy + 60)
+      ..cubicTo(
+        center.dx + 110,
+        center.dy - 10,
+        center.dx + 60,
+        center.dy - 120,
+        center.dx,
+        center.dy - 40,
+      )
+      ..cubicTo(
+        center.dx - 60,
+        center.dy - 120,
+        center.dx - 110,
+        center.dy - 10,
+        center.dx,
+        center.dy + 60,
+      )
       ..close();
 
-    paint.color = type == 'Party Heart' ? const Color(0xFFF48FB1) : const Color(0xFFE91E63);
+    paint.color = type == 'Party Heart'
+        ? const Color(0xFFF48FB1)
+        : const Color(0xFFE91E63);
     canvas.drawPath(heartPath, paint);
 
     // Face features (starter)
@@ -83,7 +110,13 @@ class HeartEmojiPainter extends CustomPainter {
       ..color = Colors.black
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4;
-    canvas.drawArc(Rect.fromCircle(center: Offset(center.dx, center.dy + 20), radius: 30), 0, 3.14, false, mouthPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(center.dx, center.dy + 20), radius: 30),
+      0,
+      3.14,
+      false,
+      mouthPaint,
+    );
 
     // Party hat placeholder (expand for confetti)
     if (type == 'Party Heart') {
@@ -98,5 +131,49 @@ class HeartEmojiPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant HeartEmojiPainter oldDelegate) => oldDelegate.type != type;
+  bool shouldRepaint(covariant HeartEmojiPainter oldDelegate) =>
+      oldDelegate.type != type;
+}
+
+class ConfettiPainter extends CustomPainter {
+  ConfettiPainter({required this.seed});
+  final int seed;
+
+  static const _colors = [
+    Color(0xFFE91E63), // pink-red
+    Color(0xFFF48FB1), // light pink
+    Color(0xFFFFD54F), // gold
+    Color(0xFFFF5252), // red accent
+    Color(0xFFFF80AB), // pink accent
+    Color(0xFFFFFFFF), // white
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random(seed);
+    final paint = Paint()..style = PaintingStyle.fill;
+    const count = 40;
+
+    for (int i = 0; i < count; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      final w = 6.0 + rng.nextDouble() * 14;
+      final h = 4.0 + rng.nextDouble() * 10;
+      final angle = rng.nextDouble() * 2 * pi;
+      paint.color = _colors[rng.nextInt(_colors.length)];
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(angle);
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: w, height: h),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ConfettiPainter oldDelegate) =>
+      oldDelegate.seed != seed;
 }
