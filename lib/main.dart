@@ -48,7 +48,15 @@ class _ValentineHomeState extends State<ValentineHome>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cupid\'s Canvas')),
+      appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundImage: const AssetImage('assets/images/cupid.jpg'),
+          ),
+        ),
+        title: const Text('Cupid\'s Canvas'),
+      ),
       body: Stack(
         children: [
           // Gradient background
@@ -70,6 +78,90 @@ class _ValentineHomeState extends State<ValentineHome>
           Positioned.fill(
             child: CustomPaint(painter: BackgroundHeartsPainter()),
           ),
+          // Scattered asset images for whimsy
+          Positioned(
+            top: 30,
+            left: 10,
+            child: Transform.rotate(
+              angle: -0.2,
+              child: Opacity(
+                opacity: 0.85,
+                child: Image.asset(
+                  'assets/images/owl.jpg',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 50,
+            right: 10,
+            child: Transform.rotate(
+              angle: 0.15,
+              child: Opacity(
+                opacity: 0.85,
+                child: Image.asset(
+                  'assets/images/frog.png',
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 160,
+            left: 20,
+            child: Transform.rotate(
+              angle: 0.1,
+              child: Opacity(
+                opacity: 0.85,
+                child: Image.asset(
+                  'assets/images/ladybug.webp',
+                  width: 65,
+                  height: 65,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 160,
+            right: 15,
+            child: Transform.rotate(
+              angle: -0.12,
+              child: Opacity(
+                opacity: 0.85,
+                child: Image.asset(
+                  'assets/images/monkey.png',
+                  width: 75,
+                  height: 75,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 130,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Transform.rotate(
+                angle: 0.05,
+                child: Opacity(
+                  opacity: 0.80,
+                  child: Image.asset(
+                    'assets/images/cows_kissing.jpg',
+                    width: 100,
+                    height: 70,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ),
           if (selectedEmoji == 'Party Heart')
             Positioned.fill(
               child: CustomPaint(painter: ConfettiPainter(seed: 42)),
@@ -77,22 +169,56 @@ class _ValentineHomeState extends State<ValentineHome>
           Column(
             children: [
               const SizedBox(height: 16),
-              DropdownButton<String>(
-                value: selectedEmoji,
-                items: emojiOptions
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => selectedEmoji = value ?? selectedEmoji),
+              // Dropdown flanked by smiling hearts
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/smiling_heart.webp',
+                    width: 36,
+                    height: 36,
+                  ),
+                  const SizedBox(width: 10),
+                  DropdownButton<String>(
+                    value: selectedEmoji,
+                    dropdownColor: const Color(0xFFFCE4EC),
+                    items: emojiOptions
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => selectedEmoji = value ?? selectedEmoji),
+                  ),
+                  const SizedBox(width: 10),
+                  Image.asset(
+                    'assets/images/smiling_heart.webp',
+                    width: 36,
+                    height: 36,
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              // Heart area with heart1.png accent
               Expanded(
                 child: Center(
                   child: SizedBox(
                     width: 300,
                     height: 300,
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
+                        // heart1.png decorative overlay
+                        Positioned(
+                          top: -15,
+                          right: -15,
+                          child: Opacity(
+                            opacity: 0.35,
+                            child: Image.asset(
+                              'assets/images/heart1.png',
+                              width: 70,
+                              height: 70,
+                            ),
+                          ),
+                        ),
                         // Love trail aura (behind heart)
                         CustomPaint(
                           size: const Size(300, 300),
