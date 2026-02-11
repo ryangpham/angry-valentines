@@ -24,9 +24,26 @@ class ValentineHome extends StatefulWidget {
   State<ValentineHome> createState() => _ValentineHomeState();
 }
 
-class _ValentineHomeState extends State<ValentineHome> {
+class _ValentineHomeState extends State<ValentineHome>
+    with SingleTickerProviderStateMixin {
   final List<String> emojiOptions = ['Sweet Heart', 'Party Heart'];
   String selectedEmoji = 'Sweet Heart';
+  late final AnimationController _sparkleController;
+
+  @override
+  void initState() {
+    super.initState();
+    _sparkleController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _sparkleController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,9 +88,34 @@ class _ValentineHomeState extends State<ValentineHome> {
               const SizedBox(height: 16),
               Expanded(
                 child: Center(
-                  child: CustomPaint(
-                    size: const Size(300, 300),
-                    painter: HeartEmojiPainter(type: selectedEmoji),
+                  child: SizedBox(
+                    width: 300,
+                    height: 300,
+                    child: Stack(
+                      children: [
+                        // Love trail aura (behind heart)
+                        CustomPaint(
+                          size: const Size(300, 300),
+                          painter: AuraPainter(type: selectedEmoji),
+                        ),
+                        // Main heart emoji
+                        CustomPaint(
+                          size: const Size(300, 300),
+                          painter: HeartEmojiPainter(type: selectedEmoji),
+                        ),
+                        // Animated sparkles (in front of heart)
+                        AnimatedBuilder(
+                          animation: _sparkleController,
+                          builder: (context, child) => CustomPaint(
+                            size: const Size(300, 300),
+                            painter: SparklesPainter(
+                              progress: _sparkleController.value,
+                              seed: 99,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -85,6 +127,29 @@ class _ValentineHomeState extends State<ValentineHome> {
   }
 }
 
+/// Builds the heart [Path] centered at [center]. Shared by multiple painters.
+Path buildHeartPath(Offset center) {
+  return Path()
+    ..moveTo(center.dx, center.dy + 60)
+    ..cubicTo(
+      center.dx + 110,
+      center.dy - 10,
+      center.dx + 60,
+      center.dy - 120,
+      center.dx,
+      center.dy - 40,
+    )
+    ..cubicTo(
+      center.dx - 60,
+      center.dy - 120,
+      center.dx - 110,
+      center.dy - 10,
+      center.dx,
+      center.dy + 60,
+    )
+    ..close();
+}
+
 class HeartEmojiPainter extends CustomPainter {
   HeartEmojiPainter({required this.type});
   final String type;
@@ -92,30 +157,12 @@ class HeartEmojiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final heartPath = Path()
-      ..moveTo(center.dx, center.dy + 60)
-      ..cubicTo(
-        center.dx + 110,
-        center.dy - 10,
-        center.dx + 60,
-        center.dy - 120,
-        center.dx,
-        center.dy - 40,
-      )
-      ..cubicTo(
-        center.dx - 60,
-        center.dy - 120,
-        center.dx - 110,
-        center.dy - 10,
-        center.dx,
-        center.dy + 60,
-      )
-      ..close();
+    final heartPath = buildHeartPath(center);
 
     // Add shadow for depth
     canvas.drawShadow(
       heartPath,
-      Colors.red.shade900.withOpacity(0.4),
+      Colors.red.shade900.withValues(alpha: 0.4),
       12,
       true,
     );
@@ -177,6 +224,100 @@ class HeartEmojiPainter extends CustomPainter {
       oldDelegate.type != type;
 }
 
+/// Draws concentric heart outlines behind the main heart for a glowing aura.
+class AuraPainter extends CustomPainter {
+  AuraPainter({required this.type});
+  final String type;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final path = buildHeartPath(center);
+
+    final baseColor = type == 'Party Heart'
+        ? const Color(0xFFF48FB1)
+        : const Color(0xFFE91E63);
+
+    // Draw 4 layers outward: thicker stroke, lower opacity.
+    const layers = [
+      (strokeWidth: 8.0, opacity: 0.18),
+      (strokeWidth: 16.0, opacity: 0.12),
+      (strokeWidth: 24.0, opacity: 0.07),
+      (strokeWidth: 32.0, opacity: 0.03),
+    ];
+
+    for (final layer in layers) {
+      final paint = Paint()
+        ..color = baseColor.withValues(alpha: layer.opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = layer.strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant AuraPainter oldDelegate) =>
+      oldDelegate.type != type;
+}
+
+/// Draws twinkling star-burst sparkles around the heart.
+class SparklesPainter extends CustomPainter {
+  SparklesPainter({required this.progress, required this.seed});
+  final double progress;
+  final int seed;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final rng = Random(seed);
+    const sparkleCount = 14;
+
+    for (int i = 0; i < sparkleCount; i++) {
+      // Fixed position on a ring around the heart.
+      final baseAngle = (2 * pi / sparkleCount) * i + rng.nextDouble() * 0.5;
+      final radius = 100.0 + rng.nextDouble() * 60;
+      final x = center.dx + cos(baseAngle) * radius;
+      final y = center.dy + sin(baseAngle) * radius - 20;
+
+      // Twinkle: each sparkle has its own phase so they don't all pulse together.
+      final phase = rng.nextDouble();
+      final twinkle = (sin((progress + phase) * 2 * pi) + 1) / 2; // 0..1
+      final opacity = 0.2 + twinkle * 0.8;
+      final sparkleSize = 3.0 + twinkle * 5.0;
+
+      final color = i.isEven
+          ? Color(0xFFFFFFFF).withValues(alpha: opacity)
+          : Color(0xFFFFD54F).withValues(alpha: opacity);
+
+      final paint = Paint()
+        ..color = color
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      // Draw 4 short lines radiating from center (star burst).
+      for (int r = 0; r < 4; r++) {
+        final rayAngle = (pi / 4) * r;
+        final dx = cos(rayAngle) * sparkleSize;
+        final dy = sin(rayAngle) * sparkleSize;
+        canvas.drawLine(Offset(x - dx, y - dy), Offset(x + dx, y + dy), paint);
+      }
+
+      // Center dot.
+      canvas.drawCircle(
+        Offset(x, y),
+        1.5 + twinkle,
+        paint..style = PaintingStyle.fill,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant SparklesPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
 // Painter for background hearts (depth & passion)
 class BackgroundHeartsPainter extends CustomPainter {
   @override
@@ -219,8 +360,8 @@ class BackgroundHeartsPainter extends CustomPainter {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                const Color(0xFFF8BBD0).withOpacity(opacity + 0.1),
-                const Color(0xFFE91E63).withOpacity(opacity),
+                const Color(0xFFF8BBD0).withValues(alpha: opacity + 0.1),
+                const Color(0xFFE91E63).withValues(alpha: opacity),
               ],
             ).createShader(
               Rect.fromCenter(
